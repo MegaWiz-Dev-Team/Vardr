@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Várðr — Asgard Monitoring</title>
+    <meta name="description" content="Asgard AI Platform Monitoring Dashboard">
+    <link rel="stylesheet" href="/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <span class="logo">🛡️</span>
+            <h1>Várðr</h1>
+            <span class="subtitle">Asgard Monitoring</span>
+        </div>
+        <div class="header-right">
+            <span class="status-dot pulse"></span>
+            <span id="last-update">Loading...</span>
+        </div>
+    </header>
+
+    <!-- Tabs -->
+    <nav class="tabs">
+        <button class="tab active" data-tab="services" id="tab-services">📊 Services</button>
+        <button class="tab" data-tab="logs" id="tab-logs">📜 Logs</button>
+        <button class="tab" data-tab="metrics" id="tab-metrics">📈 Metrics</button>
+    </nav>
+
+    <!-- Services Tab -->
+    <section id="services" class="tab-content active">
+        <div class="services-grid" id="services-grid">
+            <div class="loading">Loading services...</div>
+        </div>
+    </section>
+
+    <!-- Logs Tab -->
+    <section id="logs" class="tab-content">
+        <div class="log-controls">
+            <select id="log-service" class="control-select">
+                <option value="">Select service...</option>
+            </select>
+            <select id="log-level" class="control-select">
+                <option value="ALL">All Levels</option>
+                <option value="ERROR">❌ Error</option>
+                <option value="WARN">⚠️ Warn</option>
+                <option value="INFO">ℹ️ Info</option>
+                <option value="DEBUG">🔍 Debug</option>
+            </select>
+            <input type="text" id="log-search" class="control-input" placeholder="Search logs...">
+            <button id="log-fetch" class="btn btn-primary">Fetch</button>
+            <button id="log-stream-toggle" class="btn btn-secondary">▶ Stream</button>
+            <label class="control-label">
+                <input type="checkbox" id="log-autoscroll" checked> Auto-scroll
+            </label>
+        </div>
+        <div class="log-viewer" id="log-viewer">
+            <div class="log-placeholder">Select a service and click Fetch to view logs</div>
+        </div>
+    </section>
+
+    <!-- Metrics Tab -->
+    <section id="metrics" class="tab-content">
+        <div class="metrics-grid" id="metrics-grid">
+            <div class="loading">Loading metrics...</div>
+        </div>
+    </section>
+
+    <script src="/app.js"></script>
+</body>
+</html>
