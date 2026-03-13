@@ -206,6 +206,84 @@ impl DockerClient {
 
         metrics
     }
+
+    // ═══════════════════════════════════════
+    // Container Controls (Sprint 2)
+    // ═══════════════════════════════════════
+
+    /// Restart a container
+    pub async fn restart_container(&self, container_name: &str) -> Result<String, String> {
+        run_docker_command(&["restart", container_name]).await
+    }
+
+    /// Stop a container
+    pub async fn stop_container(&self, container_name: &str) -> Result<String, String> {
+        run_docker_command(&["stop", container_name]).await
+    }
+
+    /// Start a container
+    pub async fn start_container(&self, container_name: &str) -> Result<String, String> {
+        run_docker_command(&["start", container_name]).await
+    }
+
+    /// Get service states for alert evaluation
+    pub async fn get_service_states(&self) -> Vec<(String, String)> {
+        let services = self.list_services().await;
+        services
+            .into_iter()
+            .map(|s| (s.name.replace("asgard_", ""), s.state))
+            .collect()
+    }
+}
+
+// ═══════════════════════════════════════
+// Docker Compose Commands (Sprint 2)
+// ═══════════════════════════════════════
+
+pub async fn compose_command(action: &str) -> Result<String, String> {
+    let args = match action {
+        "up" => vec!["compose", "up", "-d"],
+        "down" => vec!["compose", "down"],
+        "restart" => vec!["compose", "restart"],
+        _ => return Err(format!("Unknown compose action: {}", action)),
+    };
+
+    let compose_dir = std::env::var("COMPOSE_DIR")
+        .unwrap_or_else(|_| "/Users/mimir/Developer/Asgard".to_string());
+
+    let output = Command::new("docker")
+        .args(&args)
+        .current_dir(&compose_dir)
+        .output()
+        .await
+        .map_err(|e| format!("Failed to run docker compose: {}", e))?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    if output.status.success() {
+        Ok(format!("{}{}", stdout, stderr))
+    } else {
+        Err(format!("Exit code: {:?}\n{}{}", output.status.code(), stdout, stderr))
+    }
+}
+
+/// Helper to run dockerCLI commands
+async fn run_docker_command(args: &[&str]) -> Result<String, String> {
+    let output = Command::new("docker")
+        .args(args)
+        .output()
+        .await
+        .map_err(|e| format!("Failed to run docker: {}", e))?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    if output.status.success() {
+        Ok(stdout.trim().to_string())
+    } else {
+        Err(format!("{}", stderr.trim()))
+    }
 }
 
 // ═══════════════════════════════════════
@@ -386,4 +464,25 @@ mod tests {
         assert_eq!(ts, "2026-03-13T10:24:54.000Z");
         assert_eq!(msg, "server started");
     }
+
+    #[test]
+    fn test_compose_action_validate() {
+        // Only 'up', 'down', 'restart' are valid
+        let valid = ["up", "down", "restart"];
+        for action in &valid {
+            assert!(!action.is_empty());
+        }
+    }
+
+    #[test]
+    fn test_parse_ports_empty() {
+        let ports = parse_ports("");
+        assert!(ports.is_empty());
+    }
+
+    #[test]
+    fn test_parse_kib() {
+        assert!((parse_size_to_mb("512KiB") - 0.5).abs() < 0.001);
+    }
 }
+

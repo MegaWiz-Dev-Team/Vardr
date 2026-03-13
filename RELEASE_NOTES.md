@@ -1,5 +1,23 @@
 # Release Notes — Várðr
 
+## v0.2.0 — Container Controls & Alerts (2026-03-13)
+
+### ✨ New Features
+- **Container Controls** — restart, stop, start any container from the UI
+- **Docker Compose Controls** — Up, Restart, Down buttons for full stack management
+- **Alert Engine** — 5 built-in rules (CPU/Memory thresholds, Container Down)
+- **Alerts Tab** — real-time summary cards, active alerts list, rule management
+- **Background Evaluator** — checks every 15 seconds
+- **Alert API** — REST endpoints for alerts, rules, and summary
+- **Toast Notifications** — visual feedback for all container actions
+
+### 📊 Stats
+- **16 tests**, all passing (8 alerts + 8 docker)
+- **17 API endpoints** (12 new)
+- Sprint 2 complete
+
+---
+
 ## v0.1.0 — Foundation (2026-03-13)
 
 > Asgard เป็นของทุกคนแล้ว — Asgard belongs to everyone.

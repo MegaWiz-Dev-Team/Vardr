@@ -17,6 +17,7 @@
             <span class="subtitle">Asgard Monitoring</span>
         </div>
         <div class="header-right">
+            <span class="alert-badge" id="alert-badge" title="Active Alerts">0</span>
             <span class="status-dot pulse"></span>
             <span id="last-update">Loading...</span>
         </div>
@@ -27,10 +28,17 @@
         <button class="tab active" data-tab="services" id="tab-services">📊 Services</button>
         <button class="tab" data-tab="logs" id="tab-logs">📜 Logs</button>
         <button class="tab" data-tab="metrics" id="tab-metrics">📈 Metrics</button>
+        <button class="tab" data-tab="alerts" id="tab-alerts">🚨 Alerts</button>
     </nav>
 
     <!-- Services Tab -->
     <section id="services" class="tab-content active">
+        <div class="compose-controls">
+            <span class="compose-label">🐳 Docker Compose</span>
+            <button class="btn btn-green" onclick="composeAction('up')">▶ Up</button>
+            <button class="btn btn-yellow" onclick="composeAction('restart')">🔄 Restart</button>
+            <button class="btn btn-red" onclick="composeAction('down')">⏹ Down</button>
+        </div>
         <div class="services-grid" id="services-grid">
             <div class="loading">Loading services...</div>
         </div>
@@ -66,6 +74,19 @@
         <div class="metrics-grid" id="metrics-grid">
             <div class="loading">Loading metrics...</div>
         </div>
+    </section>
+
+    <!-- Alerts Tab -->
+    <section id="alerts" class="tab-content">
+        <div class="alerts-header">
+            <div class="alert-summary-cards" id="alert-summary-cards"></div>
+        </div>
+        <h3 class="section-title">Active Alerts</h3>
+        <div class="alerts-list" id="alerts-list">
+            <div class="loading">Loading alerts...</div>
+        </div>
+        <h3 class="section-title">Alert Rules</h3>
+        <div class="rules-list" id="rules-list"></div>
     </section>
 
     <script src="/app.js"></script>
