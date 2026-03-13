@@ -1,8 +1,12 @@
 mod alerts;
+mod auto_restart;
 mod docker;
 mod models;
+mod prometheus;
+mod uptime;
 
 use alerts::AlertEngine;
+use auto_restart::AutoRestartWatchdog;
 use axum::{
     Router,
     extract::{Path, Query, State},
@@ -18,6 +22,7 @@ use std::convert::Infallible;
 use std::sync::Arc;
 use std::time::Duration;
 use tower_http::cors::CorsLayer;
+use uptime::UptimeTracker;
 
 // ═══════════════════════════════════════
 // 🛡️ Várðr — Asgard Monitoring Dashboard
@@ -27,6 +32,8 @@ use tower_http::cors::CorsLayer;
 struct AppState {
     docker: DockerClient,
     alerts: Arc<AlertEngine>,
+    uptime: Arc<UptimeTracker>,
+    watchdog: Arc<AutoRestartWatchdog>,
 }
 
 #[tokio::main]
@@ -43,6 +50,8 @@ async fn main() {
     let state = AppState {
         docker: DockerClient::new(),
         alerts: Arc::new(AlertEngine::new()),
+        uptime: Arc::new(UptimeTracker::new()),
+        watchdog: Arc::new(AutoRestartWatchdog::new()),
     };
 
     // Background alert evaluator
@@ -53,6 +62,38 @@ async fn main() {
             let states = bg_state.docker.get_service_states().await;
             bg_state.alerts.evaluate(&metrics, &states).await;
             tokio::time::sleep(Duration::from_secs(15)).await;
+        }
+    });
+
+    // Background uptime tracker
+    let bg_uptime = state.clone();
+    tokio::spawn(async move {
+        loop {
+            let services = bg_uptime.docker.list_services().await;
+            for svc in &services {
+                bg_uptime.uptime.update(&svc.name, &svc.status).await;
+            }
+            tokio::time::sleep(Duration::from_secs(15)).await;
+        }
+    });
+
+    // Background auto-restart watchdog
+    let bg_watchdog = state.clone();
+    tokio::spawn(async move {
+        // Wait 30s before first check to let containers stabilize
+        tokio::time::sleep(Duration::from_secs(30)).await;
+        loop {
+            let events = bg_watchdog.watchdog
+                .check_and_restart(&bg_watchdog.docker, &bg_watchdog.uptime)
+                .await;
+            for evt in &events {
+                if evt.success {
+                    tracing::info!("🔄 Auto-restarted: {} — {}", evt.container, evt.reason);
+                } else {
+                    tracing::warn!("⚠️ Auto-restart failed: {} — {}", evt.container, evt.reason);
+                }
+            }
+            tokio::time::sleep(Duration::from_secs(30)).await;
         }
     });
 
@@ -77,6 +118,16 @@ async fn main() {
         .route("/api/alerts/summary", get(api_alerts_summary))
         .route("/api/alerts/rules", get(api_alerts_rules))
         .route("/api/alerts/rules", post(api_alerts_add_rule))
+        // API — Prometheus Metrics (Sprint 3)
+        .route("/metrics", get(api_prometheus_metrics))
+        // API — Uptime (Sprint 3)
+        .route("/api/uptime", get(api_uptime_all))
+        .route("/api/uptime/{name}", get(api_uptime_container))
+        // API — Auto-Restart (Sprint 3)
+        .route("/api/watchdog/status", get(api_watchdog_status))
+        .route("/api/watchdog/config", get(api_watchdog_config))
+        .route("/api/watchdog/config", post(api_watchdog_update_config))
+        .route("/api/watchdog/events", get(api_watchdog_events))
         // Static
         .route("/style.css", get(css_file))
         .route("/app.js", get(js_file))
@@ -320,3 +371,76 @@ fn resolve_container_name(name: &str) -> String {
         format!("asgard_{}", name)
     }
 }
+
+// ═══════════════════════════════════════
+// API — Prometheus Metrics (Sprint 3)
+// ═══════════════════════════════════════
+
+async fn api_prometheus_metrics(State(state): State<AppState>) -> Response {
+    let body = prometheus::render_metrics(&state.docker, &state.uptime).await;
+    (
+        StatusCode::OK,
+        [("content-type", "text/plain; version=0.0.4; charset=utf-8")],
+        body,
+    ).into_response()
+}
+
+// ═══════════════════════════════════════
+// API — Uptime (Sprint 3)
+// ═══════════════════════════════════════
+
+async fn api_uptime_all(
+    State(state): State<AppState>,
+) -> Json<std::collections::HashMap<String, uptime::UptimeRecord>> {
+    Json(state.uptime.get_all_uptime().await)
+}
+
+async fn api_uptime_container(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+) -> Response {
+    let container_name = resolve_container_name(&name);
+    match state.uptime.get_uptime(&container_name).await {
+        Some(record) => Json(record).into_response(),
+        None => (StatusCode::NOT_FOUND, Json(serde_json::json!({
+            "error": "Container not found in uptime records",
+            "container": container_name
+        }))).into_response(),
+    }
+}
+
+// ═══════════════════════════════════════
+// API — Auto-Restart Watchdog (Sprint 3)
+// ═══════════════════════════════════════
+
+async fn api_watchdog_status(State(state): State<AppState>) -> Json<serde_json::Value> {
+    Json(state.watchdog.status().await)
+}
+
+async fn api_watchdog_config(
+    State(state): State<AppState>,
+) -> Json<auto_restart::AutoRestartConfig> {
+    let config = state.watchdog.config.read().await;
+    Json(config.clone())
+}
+
+async fn api_watchdog_update_config(
+    State(state): State<AppState>,
+    Json(new_config): Json<auto_restart::AutoRestartConfig>,
+) -> Response {
+    let mut config = state.watchdog.config.write().await;
+    tracing::info!("⚙️ Watchdog config updated: enabled={}, max_restarts={}", new_config.enabled, new_config.max_restarts);
+    *config = new_config;
+    (StatusCode::OK, Json(serde_json::json!({
+        "status": "ok",
+        "message": "Watchdog config updated"
+    }))).into_response()
+}
+
+async fn api_watchdog_events(
+    State(state): State<AppState>,
+) -> Json<Vec<auto_restart::RestartEvent>> {
+    let events = state.watchdog.events.read().await;
+    Json(events.clone())
+}
+
