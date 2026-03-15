@@ -72,7 +72,9 @@ impl DockerClient {
                     n if n.contains("qdrant") => 8,
                     n if n.contains("redis") => 9,
                     n if n.contains("neo4j") => 10,
-                    _ => 11,
+                    n if n.contains("eir_gateway") => 11,
+                    n if n.contains("eir") => 12,
+                    _ => 13,
                 }
             };
             order(&a.name).cmp(&order(&b.name))

@@ -224,6 +224,18 @@ impl ServiceMeta {
                 health_endpoint: None,
                 health_port: Some(7474),
             },
+            n if n.contains("eir_gateway") => Self {
+                display_name: "Eir Gateway",
+                emoji: "🏥",
+                health_endpoint: Some("/healthz"),
+                health_port: Some(8300),
+            },
+            n if n.contains("eir") => Self {
+                display_name: "Eir (OpenEMR)",
+                emoji: "💊",
+                health_endpoint: None,
+                health_port: Some(80),
+            },
             _ => Self {
                 display_name: "Unknown",
                 emoji: "❓",
