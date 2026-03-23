@@ -236,6 +236,24 @@ impl ServiceMeta {
                 health_endpoint: None,
                 health_port: Some(80),
             },
+            n if n.contains("forseti") => Self {
+                display_name: "Forseti",
+                emoji: "⚖️",
+                health_endpoint: Some("/"),
+                health_port: Some(5555),
+            },
+            n if n.contains("ratatoskr") => Self {
+                display_name: "Ratatoskr",
+                emoji: "🐿️",
+                health_endpoint: Some("/health"),
+                health_port: Some(9200),
+            },
+            n if n.contains("pageindex") => Self {
+                display_name: "PageIndex",
+                emoji: "📑",
+                health_endpoint: Some("/health"),
+                health_port: Some(8600),
+            },
             _ => Self {
                 display_name: "Unknown",
                 emoji: "❓",
