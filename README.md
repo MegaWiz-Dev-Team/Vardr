@@ -2,6 +2,14 @@
 
 Real-time monitoring dashboard for all Asgard services. Built with Rust (Axum).
 
+### 🏥 Role in Multi-Agent Ecosystem
+
+> **Observability & Clinical Tracing (ยามรักษาการณ์)** — Várðr trace ทุก Agent call chain ด้วย **OpenTelemetry** เพื่อให้แพทย์สามารถดูย้อนหลังว่า "AI คิดยังไง" — ทุก Trace เชื่อมกลับไปหา Audit Trail ได้
+>
+> **Integrations:** Prometheus (Metrics) • Grafana (Dashboard) • Structured JSON Logs
+>
+> 📖 [Full Architecture →](https://github.com/MegaWiz-Dev-Team/Asgard/blob/main/docs/roadmap/MultiAgent_Architecture_Plan.md) | [Sprint Plan →](https://github.com/MegaWiz-Dev-Team/Asgard/blob/main/docs/roadmap/MultiAgent_Sprint_Plan.md)
+
 ## Features
 
 - 📊 **Service Health** — Live status of all Docker Compose services
