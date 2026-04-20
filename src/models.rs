@@ -69,7 +69,7 @@ pub struct HealthStatus {
 // Log Entry
 // ═══════════════════════════════════════
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LogEntry {
     pub timestamp: String,
     pub level: String,
@@ -81,7 +81,7 @@ pub struct LogEntry {
 // Container Metrics
 // ═══════════════════════════════════════
 
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ContainerMetrics {
     pub service: String,
     pub cpu_percent: f64,
@@ -158,13 +158,13 @@ pub struct ServiceMeta {
 impl ServiceMeta {
     pub fn for_container(name: &str) -> Self {
         match name {
-            n if n.contains("mimir_api") => Self {
+            n if n.contains("mimir_api") || n.contains("mimir-api") => Self {
                 display_name: "Mimir API",
                 emoji: "🧠",
                 health_endpoint: Some("/health"),
                 health_port: Some(3000),
             },
-            n if n.contains("mimir_dashboard") => Self {
+            n if n.contains("mimir_dashboard") || n.contains("mimir-dashboard") => Self {
                 display_name: "Mimir Dashboard",
                 emoji: "🖥️",
                 health_endpoint: None,
@@ -224,7 +224,37 @@ impl ServiceMeta {
                 health_endpoint: None,
                 health_port: Some(7474),
             },
-            n if n.contains("eir_gateway") => Self {
+            n if n.contains("portal") => Self {
+                display_name: "Asgard Portal",
+                emoji: "🚀",
+                health_endpoint: Some("/health"),
+                health_port: Some(3000),
+            },
+            n if n.contains("llmgoat") || n.contains("goat") => Self {
+                display_name: "LLM Goat",
+                emoji: "🐐",
+                health_endpoint: None,
+                health_port: Some(8080),
+            },
+            n if n.contains("mjolnir") => Self {
+                display_name: "Mjolnir",
+                emoji: "🔨",
+                health_endpoint: None,
+                health_port: None,
+            },
+            n if n.contains("hermodr-eir") || n.contains("hermodr_eir") => Self {
+                display_name: "Hermóðr (Eir WebView)",
+                emoji: "📱",
+                health_endpoint: None,
+                health_port: None,
+            },
+            n if n.contains("hermodr") => Self {
+                display_name: "Hermóðr",
+                emoji: "💬",
+                health_endpoint: None,
+                health_port: Some(3000),
+            },
+            n if n.contains("eir_gateway") || n.contains("eir-gateway") => Self {
                 display_name: "Eir Gateway",
                 emoji: "🏥",
                 health_endpoint: Some("/healthz"),
@@ -253,6 +283,12 @@ impl ServiceMeta {
                 emoji: "📑",
                 health_endpoint: Some("/health"),
                 health_port: Some(8600),
+            },
+            n if n.contains("fafnir") || n.contains("vault") => Self {
+                display_name: "HashiCorp Vault",
+                emoji: "🔐",
+                health_endpoint: None,
+                health_port: Some(8200),
             },
             _ => Self {
                 display_name: "Unknown",

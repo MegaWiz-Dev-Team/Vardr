@@ -153,7 +153,14 @@ async function loadServiceSelector() {
         const select = document.getElementById('log-service');
         const current = select.value;
         select.innerHTML = '<option value="">Select service...</option>' +
-            services.map(s => `<option value="${s.name}" ${s.name === current ? 'selected' : ''}>${s.emoji} ${s.display_name}</option>`).join('');
+            services.map(s => {
+                const parts = s.name.split('-');
+                let suffixText = '';
+                if (parts.length >= 3 && !s.name.includes("heimdall")) {
+                    suffixText = ` (${parts.slice(-2).join('-')})`;
+                }
+                return `<option value="${s.name}" ${s.name === current ? 'selected' : ''}>${s.emoji} ${s.display_name}${suffixText}</option>`;
+            }).join('');
     } catch (e) { console.error('Failed to load service list:', e); }
 }
 

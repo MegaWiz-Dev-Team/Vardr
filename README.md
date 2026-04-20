@@ -19,16 +19,20 @@ Real-time monitoring dashboard for all Asgard services. Built with Rust (Axum).
 
 ## Quick Start
 
-```bash
-cargo run
-# → http://localhost:9090
-```
-
-## Docker
-
+### 1. Deploy the K3s Dashboard
 ```bash
 docker build -t vardr .
+# Várðr runs natively in Kubernetes but accesses host stats via the Agent
 docker run -v /var/run/docker.sock:/var/run/docker.sock:ro -p 9090:9090 vardr
+```
+
+### 2. Install the Native macOS Host Agent
+Because Várðr is containerized and `Heimdall Gateway` runs as a bare-metal macOS `launchd` process (to access Apple Silicon GPU unified memory), Várðr cannot natively read its CPU utilization or files. 
+You must install the **Várðr Native Agent**:
+
+```bash
+# Compiles and deploys the agent to macOS launchd (Port 9091)
+sh ./setup_mac_vardr_agent.sh
 ```
 
 ## Tech Stack

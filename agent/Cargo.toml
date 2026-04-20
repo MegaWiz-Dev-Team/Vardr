@@ -1,0 +1,17 @@
+[package]
+name = "agent"
+version = "0.4.0"
+edition = "2024"
+
+[dependencies]
+axum = { version = "0.8", features = ["macros"] }
+tokio = { version = "1.43", features = ["full"] }
+tokio-stream = "0.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sysinfo = "0.33"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+async-stream = "0.3"
+chrono = "0.4"
+tower-http = { version = "0.6", features = ["cors"] }
