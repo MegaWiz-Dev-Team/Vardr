@@ -28,6 +28,36 @@ pub struct ContainerMetrics {
 }
 
 #[derive(Serialize)]
+pub struct ProcessSnapshot {
+    pub pid: u32,
+    pub name: String,
+    pub memory_mb: f64,
+    pub cpu_percent: f64,
+}
+
+#[derive(Serialize)]
+pub struct SystemMetrics {
+    /// Apple Silicon uses unified memory — physical RAM doubles as VRAM.
+    /// `memory_total_mb` therefore covers both. There is no separate VRAM
+    /// figure to report; a dedicated GPU box would need `powermetrics`
+    /// (root privileges) which is out of scope for the user-mode agent.
+    pub apple_silicon_unified_memory: bool,
+    pub memory_total_mb: f64,
+    pub memory_used_mb: f64,
+    pub memory_available_mb: f64,
+    pub memory_used_percent: f64,
+    pub swap_total_mb: f64,
+    pub swap_used_mb: f64,
+    pub cpu_count: usize,
+    pub cpu_percent_global: f64,
+    pub load_avg_1m: f64,
+    pub load_avg_5m: f64,
+    pub load_avg_15m: f64,
+    pub uptime_seconds: u64,
+    pub top_memory_processes: Vec<ProcessSnapshot>,
+}
+
+#[derive(Serialize)]
 pub struct LogEntry {
     pub timestamp: String,
     pub level: String,
@@ -67,6 +97,7 @@ async fn main() {
     let app = Router::new()
         .route("/health", get(|| async { Json(serde_json::json!({"status": "ok"})) }))
         .route("/api/metrics", get(api_metrics))
+        .route("/api/system", get(api_system))
         .route("/api/logs", get(api_logs))
         .route("/api/logs/stream", get(api_logs_stream))
         .layer(CorsLayer::permissive())
@@ -123,6 +154,55 @@ async fn api_metrics(
     }];
 
     Json(metrics)
+}
+
+async fn api_system(
+    axum::extract::State(state): axum::extract::State<std::sync::Arc<AppState>>,
+) -> Json<SystemMetrics> {
+    let mut sys = state.sys.lock().await;
+    sys.refresh_all();
+
+    let total_mb = (sys.total_memory() as f64) / 1024.0 / 1024.0;
+    let used_mb = (sys.used_memory() as f64) / 1024.0 / 1024.0;
+    let available_mb = (sys.available_memory() as f64) / 1024.0 / 1024.0;
+    let used_pct = if total_mb > 0.0 { (used_mb / total_mb) * 100.0 } else { 0.0 };
+
+    let swap_total = (sys.total_swap() as f64) / 1024.0 / 1024.0;
+    let swap_used = (sys.used_swap() as f64) / 1024.0 / 1024.0;
+
+    let global_cpu = sys.global_cpu_usage() as f64;
+    let load = System::load_average();
+    let uptime = System::uptime();
+    let cpu_count = sys.cpus().len();
+
+    // Top 8 processes by RSS (gemma bench, qwen, etc. land here during ML work).
+    let mut procs: Vec<ProcessSnapshot> = sys.processes().iter()
+        .map(|(pid, p)| ProcessSnapshot {
+            pid: pid.as_u32(),
+            name: p.name().to_string_lossy().to_string(),
+            memory_mb: (p.memory() as f64) / 1024.0 / 1024.0,
+            cpu_percent: p.cpu_usage() as f64,
+        })
+        .collect();
+    procs.sort_by(|a, b| b.memory_mb.partial_cmp(&a.memory_mb).unwrap_or(std::cmp::Ordering::Equal));
+    procs.truncate(8);
+
+    Json(SystemMetrics {
+        apple_silicon_unified_memory: cfg!(target_arch = "aarch64") && cfg!(target_os = "macos"),
+        memory_total_mb: total_mb,
+        memory_used_mb: used_mb,
+        memory_available_mb: available_mb,
+        memory_used_percent: used_pct,
+        swap_total_mb: swap_total,
+        swap_used_mb: swap_used,
+        cpu_count,
+        cpu_percent_global: global_cpu,
+        load_avg_1m: load.one,
+        load_avg_5m: load.five,
+        load_avg_15m: load.fifteen,
+        uptime_seconds: uptime,
+        top_memory_processes: procs,
+    })
 }
 
 fn get_log_file_path() -> PathBuf {
